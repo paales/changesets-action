@@ -380,8 +380,6 @@ describe("publish", () => {
       cwd,
     });
 
-    console.log('response', response);
-
     expect(response.published).toBeTruthy();
     response.published && expect(response.publishedPackages.length).toBe(2);
     expect(mockedGithubMethods.repos.createRelease.mock.calls.length).toBe(1);

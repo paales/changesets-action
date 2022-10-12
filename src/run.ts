@@ -46,6 +46,9 @@ const createAggregatedRelease = async (
         );
       }
 
+      // If there is no content, we don't need to create a changelog entry.
+      if (!changelogEntry.content) return '';
+
       return `## ${pkg.packageJson.name}@${pkg.packageJson.version}\n\n${changelogEntry.content}`;
     })
   );
@@ -112,12 +115,12 @@ type PublishedPackage = { name: string; version: string };
 
 type PublishResult =
   | {
-      published: true;
-      publishedPackages: PublishedPackage[];
-    }
+    published: true;
+    publishedPackages: PublishedPackage[];
+  }
   | {
-      published: false;
-    };
+    published: false;
+  };
 
 export async function runPublish({
   script,
@@ -155,7 +158,7 @@ export async function runPublish({
       if (pkg === undefined) {
         throw new Error(
           `Package "${pkgName}" not found.` +
-            "This is probably a bug in the action, please open an issue"
+          "This is probably a bug in the action, please open an issue"
         );
       }
       releasedPackages.push(pkg);
@@ -184,7 +187,7 @@ export async function runPublish({
     if (packages.length === 0) {
       throw new Error(
         `No package found.` +
-          "This is probably a bug in the action, please open an issue"
+        "This is probably a bug in the action, please open an issue"
       );
     }
     let pkg = packages[0];
@@ -254,9 +257,9 @@ export async function getVersionPrBody({
 }: GetMessageOptions) {
   let messageHeader = `This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and ${
     hasPublishScript
-      ? `the packages will be published to npm automatically`
-      : `publish to npm yourself or [setup this action to publish automatically](https://github.com/changesets/action#with-publishing)`
-  }. If you're not ready to do a release yet, that's fine, whenever you add more changesets to ${branch}, this PR will be updated.
+    ? `the packages will be published to npm automatically`
+    : `publish to npm yourself or [setup this action to publish automatically](https://github.com/changesets/action#with-publishing)`
+    }. If you're not ready to do a release yet, that's fine, whenever you add more changesets to ${branch}, this PR will be updated.
 `;
   let messagePrestate = !!preState
     ? `⚠️⚠️⚠️⚠️⚠️⚠️
@@ -361,6 +364,7 @@ export async function runVersion({
       );
 
       let entry = getChangelogEntry(changelogContents, pkg.packageJson.version);
+      if (!entry.content) return null
       return {
         highestLevel: entry.highestLevel,
         private: !!pkg.packageJson.private,
@@ -374,9 +378,8 @@ export async function runVersion({
 
   // project with `commit: true` setting could have already committed files
   if (!(await gitUtils.checkIfClean())) {
-    const finalCommitMessage = `${commitMessage}${
-      !!preState ? ` (${preState.tag})` : ""
-    }`;
+    const finalCommitMessage = `${commitMessage}${!!preState ? ` (${preState.tag})` : ""
+      }`;
     await gitUtils.commitAll(finalCommitMessage);
   }
 
@@ -386,7 +389,7 @@ export async function runVersion({
   console.log(JSON.stringify(searchResult.data, null, 2));
 
   const changedPackagesInfo = (await changedPackagesInfoPromises)
-    .filter((x) => x)
+    .filter(<T,>(value: T): value is NonNullable<T> => value !== null && value !== undefined)
     .sort(sortTheThings);
 
   let prBody = await getVersionPrBody({
