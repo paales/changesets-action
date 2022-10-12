@@ -1,5 +1,6 @@
 import { exec } from "@actions/exec";
 import * as github from "@actions/github";
+import * as core from "@actions/core";
 import fs from "fs-extra";
 import { getPackages, Package } from "@manypkg/get-packages";
 import path from "path";
@@ -49,6 +50,8 @@ const createAggregatedRelease = async (
       // If there is no content, we don't need to create a changelog entry.
       if (!changelogEntry.content.trim()) return '';
 
+      core.debug(`aggregate ## ${pkg.packageJson.name}@${pkg.packageJson.version}\n\n${changelogEntry.content}`)
+
       return `## ${pkg.packageJson.name}@${pkg.packageJson.version}\n\n${changelogEntry.content}`;
     })
   );
@@ -60,6 +63,8 @@ const createAggregatedRelease = async (
   );
   const name = releaseName || `Release ${now.toISOString()}`;
   const tag_name = tagName || `release-${+now}`;
+
+  console.log(body);
 
   await octokit.repos.createRelease({
     name,
@@ -364,6 +369,10 @@ export async function runVersion({
 
       let entry = getChangelogEntry(changelogContents, pkg.packageJson.version);
       if (!entry.content.trim()) return null
+
+      core.debug(`runversion ## ${pkg.packageJson.name}@${pkg.packageJson.version}`)
+      core.debug(`START${entry.content}END`)
+
       return {
         highestLevel: entry.highestLevel,
         private: !!pkg.packageJson.private,

@@ -357,6 +357,41 @@ describe("publish", () => {
     expect(params.body).toContain(`change something in b`);
   });
 
+
+  it.only("should ignore packages in release with no changes", async () => {
+    let cwd = f.copy("simple-project-empty-notes");
+    linkNodeModules(cwd);
+
+    // Fake a publish command result
+    mockedExecResponse = {
+      code: 0,
+      stderr: "",
+      stdout: [
+        `🦋  New tag: simple-project-pkg-a@0.0.1`,
+        `🦋  New tag: simple-project-pkg-b@0.0.1`,
+      ].join("\n"),
+    };
+
+    const response = await runPublish({
+      githubToken: "@@GITHUB_TOKEN",
+      createGithubReleases: "aggregate",
+      script: "npm run release",
+      githubReleaseName: "", // make sure empty string is treat as undefined parameter
+      cwd,
+    });
+
+    expect(response.published).toBeTruthy();
+    response.published && expect(response.publishedPackages.length).toBe(2);
+    expect(mockedGithubMethods.repos.createRelease.mock.calls.length).toBe(1);
+    const params = mockedGithubMethods.repos.createRelease.mock.calls[0][0];
+
+    expect(params.name).toEqual(expect.stringContaining("Release "));
+    expect(params.body).toContain(`## simple-project-pkg-a@0.0.1`);
+    expect(params.body).not.toContain(`## simple-project-pkg-b@0.0.1`);
+    expect(params.body).toContain(`change something in a`);
+    expect(params.body).not.toContain(`change something in b`);
+  })
+
   it("should allow to customize release title with createGithubReleases: aggreate", async () => {
     let cwd = f.copy("simple-project-published");
     linkNodeModules(cwd);

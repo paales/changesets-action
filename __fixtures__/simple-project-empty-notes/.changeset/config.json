@@ -1,0 +1,4 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@2.2.0/schema.json",
+  "linked": [["simple-project-pkg-b", "simple-project-pkg-a"]]
+}
