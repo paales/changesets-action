@@ -84,7 +84,7 @@ const createAggregatedRelease = async (
       }
 
       // If there is no content, we don't need to create a changelog entry.
-      if (!changelogEntry.content) return '';
+      if (!changelogEntry.content.trim()) return '';
 
       return `## ${pkg.packageJson.name}@${pkg.packageJson.version}\n\n${changelogEntry.content}`;
     })
