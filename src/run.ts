@@ -15,6 +15,7 @@ import {
 import * as gitUtils from "./gitUtils";
 import readChangesetState from "./readChangesetState";
 import resolveFrom from "resolve-from";
+import { glob } from "glob";
 
 // GitHub Issues/PRs messages have a max size limit on the
 // message body payload.
@@ -24,7 +25,7 @@ const MAX_CHARACTERS_PER_MESSAGE = 60000;
 
 const createRelease = async (
   octokit: ReturnType<typeof github.getOctokit>,
-  { pkg, tagName }: { pkg: Package; tagName: string }
+  { pkg, tagName, assets }: { pkg: Package; tagName: string; assets: string[] }
 ) => {
   try {
     let changelogFileName = path.join(pkg.dir, "CHANGELOG.md");
@@ -40,13 +41,27 @@ const createRelease = async (
       );
     }
 
-    await octokit.repos.createRelease({
+    const release = await octokit.repos.createRelease({
       name: tagName,
       tag_name: tagName,
       body: changelogEntry.content,
       prerelease: pkg.packageJson.version.includes("-"),
       ...github.context.repo,
     });
+
+    for (const pattern of assets) {
+      const assets = await glob(pattern);
+      console.log(`Pattern ${pattern} matched the following assets: ${assets}`);
+      for (const asset of assets) {
+        await octokit.repos.uploadReleaseAsset({
+          release_id: release.data.id,
+          name: path.basename(asset),
+          // @ts-expect-error buffer is also accepted even though incorrectly typed
+          data: await fs.readFile(asset),
+          ...github.context.repo,
+        });
+      }
+    }
   } catch (err: any) {
     // if we can't find a changelog, the user has probably disabled changelogs
     if (err.code !== "ENOENT") {
@@ -59,6 +74,7 @@ type PublishOptions = {
   script: string;
   githubToken: string;
   createGithubReleases: boolean;
+  githubReleaseAssets: string[];
   cwd?: string;
 };
 
@@ -77,6 +93,7 @@ export async function runPublish({
   script,
   githubToken,
   createGithubReleases,
+  githubReleaseAssets,
   cwd = process.cwd(),
 }: PublishOptions): Promise<PublishResult> {
   let octokit = github.getOctokit(githubToken);
@@ -119,6 +136,7 @@ export async function runPublish({
           createRelease(octokit, {
             pkg,
             tagName: `${pkg.packageJson.name}@${pkg.packageJson.version}`,
+            assets: githubReleaseAssets,
           })
         )
       );
@@ -142,6 +160,7 @@ export async function runPublish({
           await createRelease(octokit, {
             pkg,
             tagName: `v${pkg.packageJson.version}`,
+            assets: githubReleaseAssets,
           });
         }
         break;
@@ -186,6 +205,7 @@ type GetMessageOptions = {
   }[];
   prBodyMaxCharacters: number;
   preState?: PreState;
+  githubReleaseAssets?: string[];
 };
 
 export async function getVersionPrBody({
@@ -194,6 +214,7 @@ export async function getVersionPrBody({
   changedPackagesInfo,
   prBodyMaxCharacters,
   branch,
+  githubReleaseAssets,
 }: GetMessageOptions) {
   let messageHeader = `This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and ${
     hasPublishScript
@@ -241,6 +262,15 @@ export async function getVersionPrBody({
     ].join("\n");
   }
 
+  // Append the assets that are to be uploaded to the GitHub release
+  if (githubReleaseAssets?.length) {
+    fullMessage += "\n";
+    fullMessage += "# GitHub Release Assets\n\n";
+    for (const asset of githubReleaseAssets) {
+      fullMessage += "1. `" + asset + "`\n";
+    }
+  }
+
   return fullMessage;
 }
 
@@ -252,6 +282,7 @@ type VersionOptions = {
   commitMessage?: string;
   hasPublishScript?: boolean;
   prBodyMaxCharacters?: number;
+  githubReleaseAssets?: string[];
 };
 
 type RunVersionResult = {
@@ -266,6 +297,7 @@ export async function runVersion({
   commitMessage = "Version Packages",
   hasPublishScript = false,
   prBodyMaxCharacters = MAX_CHARACTERS_PER_MESSAGE,
+  githubReleaseAssets,
 }: VersionOptions): Promise<RunVersionResult> {
   let repo = `${github.context.repo.owner}/${github.context.repo.repo}`;
   let branch = github.context.ref.replace("refs/heads/", "");
@@ -338,6 +370,7 @@ export async function runVersion({
     branch,
     changedPackagesInfo,
     prBodyMaxCharacters,
+    githubReleaseAssets,
   });
 
   if (searchResult.data.items.length === 0) {

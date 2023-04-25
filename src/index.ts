@@ -85,6 +85,7 @@ const getOptionalInput = (name: string) => core.getInput(name) || undefined;
         script: publishScript,
         githubToken,
         createGithubReleases: core.getBooleanInput("createGithubReleases"),
+        githubReleaseAssets: core.getMultilineInput("githubReleaseAssets"),
       });
 
       if (result.published) {
@@ -103,6 +104,7 @@ const getOptionalInput = (name: string) => core.getInput(name) || undefined;
         prTitle: getOptionalInput("title"),
         commitMessage: getOptionalInput("commit"),
         hasPublishScript,
+        githubReleaseAssets: core.getMultilineInput("githubReleaseAssets"),
       });
 
       core.setOutput("pullRequestNumber", String(pullRequestNumber));
