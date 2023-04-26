@@ -50,7 +50,9 @@ const createRelease = async (
     });
 
     for (const pattern of assets) {
-      const assets = await glob(pattern);
+      const assets = await new Promise<string[]>((resolve, reject) =>
+        glob(pattern, (err, matches) => (err ? reject(err) : resolve(matches)))
+      );
       console.log(`Pattern ${pattern} matched the following assets: ${assets}`);
       for (const asset of assets) {
         await octokit.repos.uploadReleaseAsset({
@@ -263,7 +265,7 @@ export async function getVersionPrBody({
   }
 
   // Append the assets that are to be uploaded to the GitHub release
-  if (githubReleaseAssets?.length) {
+  if (githubReleaseAssets && githubReleaseAssets.length) {
     fullMessage += "\n";
     fullMessage += "# GitHub Release Assets\n\n";
     for (const asset of githubReleaseAssets) {
