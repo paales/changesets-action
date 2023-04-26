@@ -1,5 +1,11 @@
 # @changesets/action
 
+## 1.4.0
+
+### Minor Changes
+
+- [`1775681`](https://github.com/changesets/action/commit/17756819da13d9dcbf44bfd9de4301a8404301cd) Thanks [@enisdenjo](https://github.com/enisdenjo)! - Upload assets to GitHub release
+
 ## 1.3.0
 
 ### Minor Changes
