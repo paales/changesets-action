@@ -1,5 +1,13 @@
 # @changesets/action
 
+## 1.5.0
+
+### Minor Changes
+
+- [`3ee9d10`](https://github.com/changesets/action/commit/3ee9d10cdbe6749a7e1fd458c654ee67ddc13b71) Thanks [@enisdenjo](https://github.com/enisdenjo)! - Merge upstream changesets/action
+
+* [`ebbfc3c`](https://github.com/changesets/action/commit/ebbfc3cb52e856c8b3325828f20b60297861f3f6) Thanks [@dotansimha](https://github.com/dotansimha)! - Allow to specify `createGithubReleases: aggregate`, in order to publish a single GitHub Release
+
 ## 1.4.0
 
 ### Minor Changes
