@@ -1,4 +1,4 @@
-import { exec } from "@actions/exec";
+import { exec, getExecOutput } from "@actions/exec";
 import * as github from "@actions/github";
 import fs from "fs-extra";
 import { getPackages, Package } from "@manypkg/get-packages";
@@ -7,7 +7,6 @@ import * as semver from "semver";
 import { PreState } from "@changesets/types";
 import {
   getChangelogEntry,
-  execWithOutput,
   getChangedPackages,
   sortTheThings,
   getVersionsByDirectory,
@@ -101,7 +100,7 @@ export async function runPublish({
   let octokit = github.getOctokit(githubToken);
   let [publishCommand, ...publishArgs] = script.split(/\s+/);
 
-  let changesetPublishOutput = await execWithOutput(
+  let changesetPublishOutput = await getExecOutput(
     publishCommand,
     publishArgs,
     { cwd }
@@ -325,8 +324,8 @@ export async function runVersion({
     });
   }
 
-  let searchQuery = `repo:${repo}+state:open+head:${versionBranch}+base:${branch}`;
-  let searchResultPromise = octokit.search.issuesAndPullRequests({
+  let searchQuery = `repo:${repo}+state:open+head:${versionBranch}+base:${branch}+is:pull-request`;
+  let searchResultPromise = octokit.rest.search.issuesAndPullRequests({
     q: searchQuery,
   });
   let changedPackages = await getChangedPackages(cwd, versionsByDirectory);
@@ -377,7 +376,7 @@ export async function runVersion({
 
   if (searchResult.data.items.length === 0) {
     console.log("creating pull request");
-    const { data: newPullRequest } = await octokit.pulls.create({
+    const { data: newPullRequest } = await octokit.rest.pulls.create({
       base: branch,
       head: versionBranch,
       title: finalPrTitle,
@@ -392,7 +391,7 @@ export async function runVersion({
     const [pullRequest] = searchResult.data.items;
 
     console.log(`updating found pull request #${pullRequest.number}`);
-    await octokit.pulls.update({
+    await octokit.rest.pulls.update({
       pull_number: pullRequest.number,
       title: finalPrTitle,
       body: prBody,
