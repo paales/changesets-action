@@ -22,6 +22,51 @@ import { glob } from "glob";
 // To avoid that, we ensure to cap the message to 60k chars.
 const MAX_CHARACTERS_PER_MESSAGE = 60000;
 
+const createAggregatedRelease = async (
+  octokit: ReturnType<typeof github.getOctokit>,
+  packages: Package[],
+  releaseName?: string,
+  tagName?: string
+) => {
+  const contentArr = await Promise.all(
+    packages.map(async (pkg) => {
+      let changelogFileName = path.join(pkg.dir, "CHANGELOG.md");
+      let changelog = await fs.readFile(changelogFileName, "utf8");
+
+      let changelogEntry = getChangelogEntry(
+        changelog,
+        pkg.packageJson.version
+      );
+
+      if (!changelogEntry) {
+        // we can find a changelog but not the entry for this version
+        // if this is true, something has probably gone wrong
+        throw new Error(
+          `Could not find changelog entry for ${pkg.packageJson.name}@${pkg.packageJson.version}`
+        );
+      }
+
+      return `## ${pkg.packageJson.name}@${pkg.packageJson.version}\n\n${changelogEntry.content}`;
+    })
+  );
+
+  const body = contentArr.join("\n\n");
+  const now = new Date();
+  const prerelease = packages.every((pkg) =>
+    pkg.packageJson.version.includes("-")
+  );
+  const name = releaseName || `Release ${now.toISOString()}`;
+  const tag_name = tagName || `release-${+now}`;
+
+  await octokit.rest.repos.createRelease({
+    name,
+    tag_name,
+    body,
+    prerelease,
+    ...github.context.repo,
+  });
+};
+
 const createRelease = async (
   octokit: ReturnType<typeof github.getOctokit>,
   { pkg, tagName, assets }: { pkg: Package; tagName: string; assets: string[] }
@@ -40,7 +85,7 @@ const createRelease = async (
       );
     }
 
-    const release = await octokit.repos.createRelease({
+    const release = await octokit.rest.repos.createRelease({
       name: tagName,
       tag_name: tagName,
       body: changelogEntry.content,
@@ -54,7 +99,7 @@ const createRelease = async (
       );
       console.log(`Pattern ${pattern} matched the following assets: ${assets}`);
       for (const asset of assets) {
-        await octokit.repos.uploadReleaseAsset({
+        await octokit.rest.repos.uploadReleaseAsset({
           release_id: release.data.id,
           name: path.basename(asset),
           // @ts-expect-error buffer is also accepted even though incorrectly typed
@@ -71,10 +116,12 @@ const createRelease = async (
   }
 };
 
-type PublishOptions = {
+export type PublishOptions = {
   script: string;
   githubToken: string;
-  createGithubReleases: boolean;
+  createGithubReleases: boolean | "aggregate";
+  githubReleaseName?: string;
+  githubTagName?: string;
   githubReleaseAssets: string[];
   cwd?: string;
 };
@@ -95,6 +142,8 @@ export async function runPublish({
   githubToken,
   createGithubReleases,
   githubReleaseAssets,
+  githubReleaseName,
+  githubTagName,
   cwd = process.cwd(),
 }: PublishOptions): Promise<PublishResult> {
   let octokit = github.getOctokit(githubToken);
@@ -131,7 +180,7 @@ export async function runPublish({
       releasedPackages.push(pkg);
     }
 
-    if (createGithubReleases) {
+    if (createGithubReleases === true) {
       await Promise.all(
         releasedPackages.map((pkg) =>
           createRelease(octokit, {
@@ -141,6 +190,15 @@ export async function runPublish({
           })
         )
       );
+    } else if (createGithubReleases === "aggregate") {
+      if (releasedPackages.length > 0) {
+        await createAggregatedRelease(
+          octokit,
+          releasedPackages,
+          githubReleaseName,
+          githubTagName
+        );
+      }
     }
   } else {
     if (packages.length === 0) {
