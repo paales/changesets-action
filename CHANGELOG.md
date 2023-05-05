@@ -1,5 +1,11 @@
 # @changesets/action
 
+## 1.5.1
+
+### Patch Changes
+
+- [`b81ec1a`](https://github.com/changesets/action/commit/b81ec1a28f57e52e32adabca66511bafe76bcca3) Thanks [@enisdenjo](https://github.com/enisdenjo)! - githubReleaseAssets has no default
+
 ## 1.5.0
 
 ### Minor Changes
