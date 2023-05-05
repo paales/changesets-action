@@ -31,7 +31,6 @@ inputs:
   githubReleaseAssets:
     description: "A multiline list of glob paths to assets to be uploaded to the GitHub release notes"
     required: false
-    default: 'true'
   githubReleaseName:
     description: "In case createGithubReleases: aggregate is set, you can customize the GitHub release name. Default to `Release <Date ISO>`"
     required: false
