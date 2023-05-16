@@ -1,5 +1,15 @@
 # @changesets/action
 
+## 1.5.2
+
+### Patch Changes
+
+- [`75202af`](https://github.com/changesets/action/commit/75202af132ea8e93b7e6df013dc3af557c106ba3) Thanks [@enisdenjo](https://github.com/enisdenjo)! - Upstream ["Wire up `@octokit/plugin-throttling` with all GitHub Octokit instances"](https://github.com/changesets/action/commit/db8a1099bc0ba1dd6f46a5b9df4212e4f69e78c9)
+
+* [`75202af`](https://github.com/changesets/action/commit/75202af132ea8e93b7e6df013dc3af557c106ba3) Thanks [@enisdenjo](https://github.com/enisdenjo)! - Upstream ["Use logging provided by `@actions/core`"](https://github.com/changesets/action/commit/8b2818674de86a7fc69aebb9ed6b486ee32eb96e)
+
+- [`75202af`](https://github.com/changesets/action/commit/75202af132ea8e93b7e6df013dc3af557c106ba3) Thanks [@enisdenjo](https://github.com/enisdenjo)! - Upstream ["Add a throttling plugin to the used Octokit instance to retry requests after hitting secondary rate limits"](https://github.com/changesets/action/commit/225a1e8cbcabb7b585174ba0ad806549db40d4cd)
+
 ## 1.5.1
 
 ### Patch Changes
