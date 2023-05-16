@@ -1,5 +1,7 @@
 import { exec, getExecOutput } from "@actions/exec";
+import { GitHub, getOctokitOptions } from "@actions/github/lib/utils";
 import * as github from "@actions/github";
+import * as core from "@actions/core";
 import fs from "fs-extra";
 import { getPackages, Package } from "@manypkg/get-packages";
 import path from "path";
@@ -15,12 +17,47 @@ import * as gitUtils from "./gitUtils";
 import readChangesetState from "./readChangesetState";
 import resolveFrom from "resolve-from";
 import { glob } from "glob";
+import { throttling } from "@octokit/plugin-throttling";
 
 // GitHub Issues/PRs messages have a max size limit on the
 // message body payload.
 // `body is too long (maximum is 65536 characters)`.
 // To avoid that, we ensure to cap the message to 60k chars.
 const MAX_CHARACTERS_PER_MESSAGE = 60000;
+
+const setupOctokit = (githubToken: string) => {
+  return new (GitHub.plugin(throttling))(
+    getOctokitOptions(githubToken, {
+      throttle: {
+        onRateLimit: (retryAfter, options: any, octokit, retryCount) => {
+          core.warning(
+            `Request quota exhausted for request ${options.method} ${options.url}`
+          );
+
+          if (retryCount <= 2) {
+            core.info(`Retrying after ${retryAfter} seconds!`);
+            return true;
+          }
+        },
+        onSecondaryRateLimit: (
+          retryAfter,
+          options: any,
+          octokit,
+          retryCount
+        ) => {
+          core.warning(
+            `SecondaryRateLimit detected for request ${options.method} ${options.url}`
+          );
+
+          if (retryCount <= 2) {
+            core.info(`Retrying after ${retryAfter} seconds!`);
+            return true;
+          }
+        },
+      },
+    })
+  );
+};
 
 const createAggregatedRelease = async (
   octokit: ReturnType<typeof github.getOctokit>,
@@ -68,7 +105,7 @@ const createAggregatedRelease = async (
 };
 
 const createRelease = async (
-  octokit: ReturnType<typeof github.getOctokit>,
+  octokit: ReturnType<typeof setupOctokit>,
   { pkg, tagName, assets }: { pkg: Package; tagName: string; assets: string[] }
 ) => {
   try {
@@ -108,9 +145,14 @@ const createRelease = async (
         });
       }
     }
-  } catch (err: any) {
+  } catch (err) {
     // if we can't find a changelog, the user has probably disabled changelogs
-    if (err.code !== "ENOENT") {
+    if (
+      err &&
+      typeof err === "object" &&
+      "code" in err &&
+      err.code !== "ENOENT"
+    ) {
       throw err;
     }
   }
@@ -146,7 +188,8 @@ export async function runPublish({
   githubTagName,
   cwd = process.cwd(),
 }: PublishOptions): Promise<PublishResult> {
-  let octokit = github.getOctokit(githubToken);
+  const octokit = setupOctokit(githubToken);
+
   let [publishCommand, ...publishArgs] = script.split(/\s+/);
 
   let changesetPublishOutput = await getExecOutput(
@@ -243,8 +286,13 @@ export async function runPublish({
 const requireChangesetsCliPkgJson = (cwd: string) => {
   try {
     return require(resolveFrom(cwd, "@changesets/cli/package.json"));
-  } catch (err: any) {
-    if (err && err.code === "MODULE_NOT_FOUND") {
+  } catch (err) {
+    if (
+      err &&
+      typeof err === "object" &&
+      "code" in err &&
+      err.code === "MODULE_NOT_FOUND"
+    ) {
       throw new Error(
         `Have you forgotten to install \`@changesets/cli\` in "${cwd}"?`
       );
@@ -358,10 +406,12 @@ export async function runVersion({
   prBodyMaxCharacters = MAX_CHARACTERS_PER_MESSAGE,
   githubReleaseAssets,
 }: VersionOptions): Promise<RunVersionResult> {
+  const octokit = setupOctokit(githubToken);
+
   let repo = `${github.context.repo.owner}/${github.context.repo.repo}`;
   let branch = github.context.ref.replace("refs/heads/", "");
   let versionBranch = `changeset-release/${branch}`;
-  let octokit = github.getOctokit(githubToken);
+
   let { preState } = await readChangesetState(cwd);
 
   await gitUtils.switchToMaybeExistingBranch(versionBranch);
@@ -417,7 +467,7 @@ export async function runVersion({
   await gitUtils.push(versionBranch, { force: true });
 
   let searchResult = await searchResultPromise;
-  console.log(JSON.stringify(searchResult.data, null, 2));
+  core.info(JSON.stringify(searchResult.data, null, 2));
 
   const changedPackagesInfo = (await changedPackagesInfoPromises)
     .filter((x) => x)
@@ -433,7 +483,7 @@ export async function runVersion({
   });
 
   if (searchResult.data.items.length === 0) {
-    console.log("creating pull request");
+    core.info("creating pull request");
     const { data: newPullRequest } = await octokit.rest.pulls.create({
       base: branch,
       head: versionBranch,
@@ -448,7 +498,7 @@ export async function runVersion({
   } else {
     const [pullRequest] = searchResult.data.items;
 
-    console.log(`updating found pull request #${pullRequest.number}`);
+    core.info(`updating found pull request #${pullRequest.number}`);
     await octokit.rest.pulls.update({
       pull_number: pullRequest.number,
       title: finalPrTitle,
