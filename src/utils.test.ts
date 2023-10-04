@@ -73,6 +73,12 @@ test("it works", () => {
   expect(entry.highestLevel).toBe(BumpLevels.major);
 });
 
+test("it doesn't return anything for an empty changeset", () => {
+  let entry = getChangelogEntry(changelog, "3.0.2");
+  expect(entry.content).toMatchInlineSnapshot(`""`);
+  expect(entry.highestLevel).toBe(BumpLevels.major);
+});
+
 test("it works", () => {
   let entry = getChangelogEntry(changelog, "3.0.1");
   expect(entry.content).toMatchSnapshot();

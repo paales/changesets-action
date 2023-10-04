@@ -79,10 +79,91 @@ export function getChangelogEntry(changelog: string, version: string) {
       headingStartInfo.index + 1,
       endIndex
     );
+  } else {
+    ast.children = [];
+  }
+
+  const content = unified().use(remarkStringify).stringify(ast);
+
+  return {
+    content: content.trim() ? content : "",
+    highestLevel: highestLevel,
+  };
+}
+
+export type GetChangelogItemsReturn = {
+  content: string;
+  highestLevel: number;
+  perBumpLevel: [string[], string[], string[], string[]];
+};
+
+export function getChangelogItems(
+  changelog: string,
+  version: string
+): GetChangelogItemsReturn {
+  const stringify = unified().use(remarkStringify);
+  let ast = unified().use(remarkParse).parse(changelog);
+
+  let highestLevel: number = BumpLevels.dep;
+
+  let nodes = ast.children as Array<any>;
+  let headingStartInfo:
+    | {
+        index: number;
+        depth: number;
+      }
+    | undefined;
+  let endIndex: number | undefined;
+
+  let perBumpLevel: [string[], string[], string[], string[]] = [[], [], [], []];
+
+  let currentBumpLevel = -1;
+  for (let i = 0; i < nodes.length; i++) {
+    let node = nodes[i];
+
+    if (node.type === "list" && currentBumpLevel > -1) {
+      node.children.forEach((child: any) => {
+        perBumpLevel[currentBumpLevel].push(stringify.stringify(child));
+      });
+    }
+
+    if (node.type === "heading") {
+      let stringified: string = mdastToString(node);
+      let match = stringified.toLowerCase().match(/(major|minor|patch)/);
+      if (match !== null) {
+        let level = BumpLevels[match[0] as "major" | "minor" | "patch"];
+
+        currentBumpLevel = level;
+        highestLevel = Math.max(level, highestLevel);
+      }
+      if (headingStartInfo === undefined && stringified === version) {
+        headingStartInfo = {
+          index: i,
+          depth: node.depth,
+        };
+        continue;
+      }
+      if (
+        endIndex === undefined &&
+        headingStartInfo !== undefined &&
+        headingStartInfo.depth === node.depth
+      ) {
+        endIndex = i;
+        break;
+      }
+    }
+  }
+
+  if (headingStartInfo) {
+    ast.children = (ast.children as any).slice(
+      headingStartInfo.index + 1,
+      endIndex
+    );
   }
   return {
     content: unified().use(remarkStringify).stringify(ast),
     highestLevel: highestLevel,
+    perBumpLevel: perBumpLevel,
   };
 }
 

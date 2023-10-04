@@ -422,7 +422,7 @@ describe("publish", () => {
     expect(params.body).toContain(`change something in b`);
   });
 
-  it("should allow to customize release title with createGithubReleases: aggreate", async () => {
+  it("should allow to customize release title with createGithubReleases: aggregate", async () => {
     let cwd = f.copy("simple-project-published");
     linkNodeModules(cwd);
 
@@ -445,8 +445,6 @@ describe("publish", () => {
       githubReleaseAssets: [],
       cwd,
     });
-
-    console.log("response", response);
 
     expect(response.published).toBeTruthy();
     response.published && expect(response.publishedPackages.length).toBe(2);
