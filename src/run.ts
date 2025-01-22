@@ -97,7 +97,14 @@ const createAggregatedRelease = async (
     pkg.packageJson.version.includes("-")
   );
   const name = releaseName || `Release ${now.toISOString()}`;
-  const tag_name = tagName || `release-${+now}`;
+  let tag_name = tagName || `release-${+now}`;
+
+  const releaseVersions = new Set(
+    packages.map((pkg) => pkg.packageJson.version)
+  );
+  if (!tagName && releaseVersions.size === 1) {
+    tag_name = `v${releaseVersions.values().next().value}`;
+  }
 
   await octokit.rest.repos.createRelease({
     name,
