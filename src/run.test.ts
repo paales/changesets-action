@@ -441,7 +441,6 @@ describe("publish", () => {
       createGithubReleases: "aggregate",
       script: "npm run release",
       githubReleaseName: `My Test Release`,
-      githubTagName: `mytag`,
       githubReleaseAssets: [],
       cwd,
     });
