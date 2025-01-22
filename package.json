@@ -55,7 +55,5 @@
     "hooks": {}
   },
   "prettier": {},
-  "resolutions": {
-    "**/@octokit/core": "4.2.0"
-  }
+  "packageManager": "yarn@4.6.0"
 }
