@@ -1,5 +1,11 @@
 # @changesets/action
 
+## 1.5.3
+
+### Patch Changes
+
+- [`310ab7f`](https://github.com/changesets/action/commit/310ab7f84cdbfef05ed1eab05adeabfbe54822d1) Thanks [@paales](https://github.com/paales)! - Implement versioned tags for the release
+
 ## 1.5.2
 
 ### Patch Changes
