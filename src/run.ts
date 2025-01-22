@@ -103,7 +103,7 @@ const createAggregatedRelease = async (
     packages.map((pkg) => pkg.packageJson.version)
   );
   if (!tagName && releaseVersions.size === 1) {
-    tag_name = `v${releaseVersions.values().next().value}`;
+    tag_name = releaseVersions.values().next().value;
   }
 
   await octokit.rest.repos.createRelease({
